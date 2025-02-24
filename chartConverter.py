@@ -18,7 +18,10 @@ class mania(chart):
     def __init__(self):
         super().__init__()
 
+
 def readFile(file_path):
+    if not file_path.endswith(".mc"):  # 只处理 .mc 文件
+        return None
     try:
         with open(file_path, 'r', encoding="utf-8") as file:
             data = json.load(file)
@@ -33,6 +36,21 @@ def readFile(file_path):
         print(f"Error occurs: {e}.")
         return None
 
+def readFolder(folder_path):
+    if not os.path.isdir(folder_path):
+        print(f"{folder_path} is not a legal folder.")
+        return []
+    
+    items = os.listdir(folder_path)
+    files = []
+
+    for item in items:
+        item_path = os.path.join(folder_path, item)
+        if os.path.isfile(item_path):
+            files.append(readFile(item_path))
+
+    return files
+    
 def extractData(object):
     if isinstance(object, dict):
         chart = malody()
@@ -49,14 +67,24 @@ def extractData(object):
 
 def main():
     if len(sys.argv) > 1:
-        inputFile = [readFile(sys.argv[index]) for index in range(1, len(sys.argv))]
-        inputChart = [extractData(data) for data in inputFile if data is not None]
+        inputFile, inputChart = [], []
+        for index in range(1, len(sys.argv)):
+            file_path = sys.argv[index]
+            if os.path.isdir(file_path):
+                tmp = readFolder(file_path)
+            else:
+                tmp = readFile(file_path)
+
+            inputFile.extend(tmp)
+            # inputFile = [readFile(sys.argv[index]) for index in range(1, len(sys.argv))]
+            inputChart = [extractData(data) for data in inputFile if data is not None]
     else:
         print("Please input a file.")
     
     if inputChart:
-        print(sys.argv[1])
-        print(inputChart[0].note)
+        # print(sys.argv[1])
+        # print(inputChart[0].note)
+        print(len(inputChart))
     else:
         print("No valid charts found.")
 
