@@ -1,0 +1,5 @@
+*
+*.mc
+!.git*
+!LICENSE
+!README.md
