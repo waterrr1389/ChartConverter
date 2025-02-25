@@ -1,5 +1,5 @@
 *
-*.mc
+!*.py
 !.git*
 !LICENSE
 !README.md
