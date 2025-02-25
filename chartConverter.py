@@ -3,6 +3,7 @@ import sys
 import json
 import bisect
 import logging
+import cProfile
 
 # Configure logging for error reporting and debugging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -71,6 +72,12 @@ def extract_data(data):
         chart.extra = data.get('extra', {})
         return chart
     return None
+
+def sanitize_filename(filename):
+    illegal_chars = r'\/:*?"<>|'
+    for char in illegal_chars:
+        filename = filename.replace(char, '')
+    return filename
 
 def process(chart):
     """Processes the chart and generates osu! formatted content."""
@@ -154,6 +161,7 @@ def process(chart):
 
     # Write to .osu file
     file_name = f'{artist} - {title} [{version}].osu'
+    file_name = sanitize_filename(file_name)
     with open(file_name, 'w', encoding='utf-8') as f:
         f.write('\n'.join(content))
         write_timing_points(f, time, offset)
@@ -231,4 +239,5 @@ def main():
         print("Please input a file.")
 
 if __name__ == '__main__':
-    main()
+    # main()
+    cProfile.run('main()', sort='time')
