@@ -107,7 +107,7 @@ def process(chart):
         logging.warning(f"No sound note found in chart {title}.")
         return
 
-    # Handle special effects (SV)
+    # Handle special effect (SV)
     if chart.effect:
         chart.SV = True
         effect = chart.effect
@@ -121,7 +121,7 @@ def process(chart):
         'AudioLeadIn: 0',
         f'PreviewTime: {preview}',
         'Countdown: 0',
-        'SampleSet: Normal',
+        'SampleSet: Soft',
         'StackLeniency: 0.7',
         'Mode: 3',
         'LetterboxInBreaks: 0',
@@ -162,10 +162,11 @@ def process(chart):
     # Write to .osu file
     file_name = f'{artist} - {title} [{version}].osu'
     file_name = sanitize_filename(file_name)
+    timing_time = []
     with open(file_name, 'w', encoding='utf-8') as f:
         f.write('\n'.join(content))
-        write_timing_points(f, time, offset)
-        write_hit_objects(f, notes, time, keys)
+        write_timing_points_with_sv(f, time, offset, timing_time, effect)
+        write_hit_objects(f, notes, time, keys, offset, timing_time)
 
 def abs_beat(beat):
     return beat[0] + beat[1] / beat[2]
@@ -173,32 +174,50 @@ def abs_beat(beat):
 def note_column(column, keys):
     return int(512 * (2 * column + 1) / (2 * keys))
     
-def write_timing_points(f, time, offset):
+def write_timing_points_with_sv(f, time, offset, timing_time, effect=None):
     """Writes timing points to the file."""
-    
+
+    timing_beats = [abs_beat(t['beat']) for t in time]
     current_time = offset
     prev_beat = 0
-    time_per_beat = 60 * 1000 / time[0]['bpm']
-    timing = ['[TimingPoints]']
-
+    current_time_per_beat = 60000 / time[0]['bpm']
+    content = ['[TimingPoints]']
+    
     for t in time:
-        current_beat = abs_beat(t['beat'])
-        time_diff = (current_beat - prev_beat) * time_per_beat
+        cur_beat = abs_beat(t['beat'])
+        time_diff = (cur_beat - prev_beat) * current_time_per_beat
         current_time += time_diff
-        time_per_beat = 60 * 1000 / t['bpm']
-        timing.append(f'{int(current_time)},{time_per_beat},4,1,0,0,1,0')
-        prev_beat = current_beat
+        timing_time.append(current_time)
+        content.append(f'{int(current_time)},{current_time_per_beat},4,1,0,0,1,0')
+        current_time_per_beat = 60000 / t['bpm']
+        prev_beat = cur_beat
 
-    timing.append('\n')
+    if effect:
+        current_time_per_beat = 60000 / time[0]['bpm']
+        for eff in effect:
+            if 'scroll' in eff:
+                eff_beat = abs_beat(eff['beat'])
+                idx = bisect.bisect_right(timing_beats, eff_beat) - 2
+                idx = max(0, idx)
+                bpm = time[idx]['bpm']
+                prev_beat = abs_beat(time[idx]['beat'])
+                time_per_beat = 60000 / bpm
+                effect_time = (eff_beat - prev_beat) * time_per_beat + timing_time[idx] + offset        
+                
+                scroll = eff.get('scroll', 1.0)
+                if scroll != 0:
+                    adjusted_beat_length = -100 / abs(scroll)
+                else:
+                    adjusted_beat_length = -1E+308
+                content.append(f'{int(effect_time)},{int(adjusted_beat_length)},4,1,0,0,0,0')
 
-    f.write('\n'.join(timing))
 
-def write_hit_objects(f, notes, time, keys):
+    f.write('\n'.join(content))
+
+def write_hit_objects(f, notes, time, keys, offset, timing_time):
     """Writes hit objects to the file."""
-    hitobjects = ['[HitObjects]']
+    hitobjects = ['\n\n[HitObjects]']
     timing_beats = [abs_beat(t["beat"]) for t in time]
-    current_time = 0
-    prev_beat = 0
 
     for note in notes:
         note_beat = abs_beat(note['beat'])
@@ -206,7 +225,8 @@ def write_hit_objects(f, notes, time, keys):
         idx = max(0, idx)
         bpm = time[idx]["bpm"]
         time_per_beat = 60000 / bpm
-        current_time += (note_beat - prev_beat) * time_per_beat
+        prev_beat = time[idx['beat']]
+        current_time = (note_beat - prev_beat) * time_per_beat + offset
         column = note_column(note['column'], keys)
         endbeat = note.get('endbeat', None)
 
@@ -214,9 +234,8 @@ def write_hit_objects(f, notes, time, keys):
             endtime = current_time + (abs_beat(endbeat) - note_beat) * time_per_beat
             hitobjects.append(f'{column},192,{int(current_time)},128,0,{int(endtime)}:0:0:0:0')
         else:
-            hitobjects.append(f'{int(column)},192,{current_time},1,0,0:0:0:0:')
+            hitobjects.append(f'{int(column)},192,{int(current_time)},1,0,0:0:0:0:')
 
-        prev_beat = note_beat
 
     f.write('\n'.join(hitobjects))
 
@@ -239,5 +258,5 @@ def main():
         print("Please input a file.")
 
 if __name__ == '__main__':
-    # main()
-    cProfile.run('main()', sort='time')
+    main()
+    # cProfile.run('main()', sort='time')
