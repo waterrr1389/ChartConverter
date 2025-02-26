@@ -111,6 +111,8 @@ def process(chart):
     if chart.effect:
         chart.SV = True
         effect = chart.effect
+    else:
+        effect = None
 
     # Prepare content to write to .osu file
     content = [
@@ -166,6 +168,7 @@ def process(chart):
     with open(file_name, 'w', encoding='utf-8') as f:
         f.write('\n'.join(content))
         write_timing_points_with_sv(f, time, offset, timing_time, effect)
+        print(timing_time)
         write_hit_objects(f, notes, time, keys, offset, timing_time)
 
 def abs_beat(beat):
@@ -186,8 +189,8 @@ def write_timing_points_with_sv(f, time, offset, timing_time, effect=None):
     for t in time:
         cur_beat = abs_beat(t['beat'])
         time_diff = (cur_beat - prev_beat) * current_time_per_beat
+        timing_time.append(time_diff)
         current_time += time_diff
-        timing_time.append(current_time)
         content.append(f'{int(current_time)},{current_time_per_beat},4,1,0,0,1,0')
         current_time_per_beat = 60000 / t['bpm']
         prev_beat = cur_beat
@@ -203,7 +206,6 @@ def write_timing_points_with_sv(f, time, offset, timing_time, effect=None):
                 prev_beat = abs_beat(time[idx]['beat'])
                 time_per_beat = 60000 / bpm
                 effect_time = (eff_beat - prev_beat) * time_per_beat + timing_time[idx] + offset        
-                
                 scroll = eff.get('scroll', 1.0)
                 if scroll != 0:
                     adjusted_beat_length = -100 / abs(scroll)
