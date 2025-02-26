@@ -225,8 +225,8 @@ def write_hit_objects(f, notes, time, keys, offset, timing_time):
         idx = max(0, idx)
         bpm = time[idx]["bpm"]
         time_per_beat = 60000 / bpm
-        prev_beat = time[idx['beat']]
-        current_time = (note_beat - prev_beat) * time_per_beat + offset
+        prev_beat = abs_beat(time[idx]['beat'])
+        current_time = (note_beat - prev_beat) * time_per_beat + timing_time[idx] + offset
         column = note_column(note['column'], keys)
         endbeat = note.get('endbeat', None)
 
