@@ -191,8 +191,8 @@ def write_timing_points_with_sv(f, time, offset, timing_time, effect=None):
         time_diff = (cur_beat - prev_beat) * current_time_per_beat
         timing_time.append(time_diff)
         current_time += time_diff
-        content.append(f'{int(current_time)},{current_time_per_beat},4,1,0,0,1,0')
         current_time_per_beat = 60000 / t['bpm']
+        content.append(f'{int(current_time)},{current_time_per_beat},4,1,0,0,1,0')
         prev_beat = cur_beat
 
     if effect:
